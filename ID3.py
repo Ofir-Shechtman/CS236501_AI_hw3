@@ -3,10 +3,17 @@ from typing import Tuple, List, Any
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 import pandas as pd
+import numpy as np
 from abc import ABCMeta
+
+import utils
 
 
 class ID3(BaseEstimator, ClassifierMixin):
+    def __init__(self, M=0):
+        self.M = M
+        self._tree = None
+
     def fit(self, X, y):
         # X, y = check_X_y(X, y)
 
@@ -52,20 +59,18 @@ class ID3(BaseEstimator, ClassifierMixin):
             else:
                 return self.children[1]
 
-    @classmethod
-    def _generate_tree(cls, X: pd.DataFrame, y: pd.Series) -> Node:
-        print(len(X))
+    def _generate_tree(self, X: pd.DataFrame, y: pd.Series) -> Node:
         assert len(X) == len(y)
         assert len(X) > 0
         if y.nunique() == 1:  # num of labels
-            return cls.Leaf(label=y.iloc[0])
+            return self.Leaf(label=y.iloc[0])
         assert y.nunique() == 2
-        if len(X.columns) == 1:  # last attr, label is the most common
-            return cls.Leaf(label=y.mode().item())
+        if len(X.columns) == 1 or len(X) < self.M:  # last attr, label is the most common
+            return self.Leaf(label=y.mode().iloc[0])
 
-        node, split = cls._split_attribute(X, y)
+        node, split = self._split_attribute(X, y)
         for indices in split:
-            node.children.append(cls._generate_tree(X.loc[indices], y.loc[indices]))
+            node.children.append(self._generate_tree(X.loc[indices], y.loc[indices]))
         return node
 
     @classmethod
@@ -112,3 +117,17 @@ def gain(y, indices_list):
 def entropy(s):
     probs = [count / len(s) for count in s.value_counts()]
     return -1 * sum([p * math.log(p, 2) for p in probs])
+
+
+def experiment():
+    id3 = ID3()
+    X_train, y_train = utils.load_train()
+    utils.experiment(id3, X_train, y_train, 'M', [1, 5, 10, 50, 100])
+
+
+if __name__ == '__main__':
+    id3 = ID3()
+    X_train, y_train = utils.load_train()
+    X_test, y_test = utils.load_test()
+    id3.fit(X_train, y_train)
+    print(id3.score(X_test, y_test))
