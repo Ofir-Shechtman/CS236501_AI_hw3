@@ -1,10 +1,12 @@
 import math
 from typing import Tuple, List, Any
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 import pandas as pd
 import numpy as np
 from abc import ABCMeta
+from collections import Counter
 
 import utils
 
@@ -15,17 +17,17 @@ class ID3(BaseEstimator, ClassifierMixin):
         self._tree = None
 
     def fit(self, X, y):
-        # X, y = check_X_y(X, y)
+        X, y = check_X_y(X, y)
 
         self._tree = self._generate_tree(X, y)
         return self
 
     def predict(self, X):
         check_is_fitted(self, ['_tree'])
-        # X = check_array(X)
+        X = check_array(X)
         prediction = []
         for i in range(len(X)):
-            answer = self._decision(self._tree, X.iloc[i])
+            answer = self._decision(self._tree, X[i])
             prediction.append(answer)
         return prediction
 
@@ -51,56 +53,80 @@ class ID3(BaseEstimator, ClassifierMixin):
             super().__init__(is_leaf=False)
             self.attr = attr
             self.threshold = threshold
-            self.children = []
+            self.less = None
+            self.greater = None
 
         def next(self, value):
             if value < self.threshold:
-                return self.children[0]
+                return self.less
             else:
-                return self.children[1]
+                return self.greater
 
-    def _generate_tree(self, X: pd.DataFrame, y: pd.Series) -> Node:
+
+    def _generate_tree(self, X, y):
         assert len(X) == len(y)
         assert len(X) > 0
-        if y.nunique() == 1:  # num of labels
-            return self.Leaf(label=y.iloc[0])
-        assert y.nunique() == 2
-        if len(X.columns) == 1 or len(X) < self.M:  # last attr, label is the most common
-            return self.Leaf(label=y.mode().iloc[0])
+        if len(np.unique(y)) == 1:  # num of labels
+            return self.Leaf(label=y[0])
+        assert len(np.unique(y)) == 2
+        assert X.ndim == 2
+        assert y.ndim == 1
+        if len(X) < self.M:  # min_samples_split, label is the most common
+            most_common = Counter(y).most_common(1)[0]
+            return self.Leaf(label=most_common[0])
 
-        node, split = self._split_attribute(X, y)
-        for indices in split:
-            node.children.append(self._generate_tree(X.loc[indices], y.loc[indices]))
+        node = self._split_attribute(X, y)
+        less = np.where(X[:, node.attr] < node.threshold)
+        greater = np.where(X[:, node.attr] >= node.threshold)
+        node.less = self._generate_tree(X.take(less, axis=0)[0], y.take(less)[0])
+        node.greater = self._generate_tree(X.take(greater, axis=0)[0], y.take(greater)[0])
         return node
 
     @classmethod
-    def _split_attribute(cls, X: pd.DataFrame, y: pd.Series) -> Tuple[ContinuousNode, Tuple[List[Any], List[Any]]]:
+    def _split_attribute(cls, X, y):
         assert len(X) == len(y)
         assert len(X) > 1
-        assert y.nunique() == 2
-        assert len(X.columns) > 1
+        assert len(np.unique(y)) == 2
+        assert X.shape[1] > 1
 
-        attributes_list = [(attribute, cls._find_threshold(X[attribute], y)) for attribute in X]
-        attribute, (best_attr, best_threshold, split) = max(attributes_list, key=lambda t: t[1][0])
-        return cls.ContinuousNode(attribute, best_threshold), split
+        a = np.apply_along_axis(cls._find_threshold, axis=0, arr=X, y=y)
+        best_feature = np.argmax(a[0])
+        threshold = a[1, np.argmax(a[0])]
+        return cls.ContinuousNode(best_feature, threshold)
 
     @classmethod
-    def _find_threshold(cls, x: pd.Series, y: pd.Series) -> Tuple[float, float, Tuple[List[Any], List[Any]]]:
+    def _find_threshold(cls, x, y):
         assert len(x) == len(y)
         assert len(x) > 1
-        assert y.nunique() == 2
-        assert x.nunique() > 1
+        assert len(np.unique(y)) == 2
+        assert len(np.unique(x)) > 1
+        u = np.unique(x)
+        u.sort()
+        arr = (u[1:] + u[:-1]) / 2
+        args = x, y
+        v_split = np.vectorize(cls._split_by_threshold, signature='(),(n),(n)->(2)')
+        a = v_split(arr, x, y)
+        best_tresh_idx = np.argmax(a[:,0])
+        return a[best_tresh_idx]
 
-        x.sort_values(ascending=True)
-        all_threshold = []
-        for i in range(0, len(x) - 1):
-            if x.iloc[i] != x.iloc[i + 1]:
-                threshold = (x.iloc[i] + x.iloc[i + 1]) / 2
-                less = x.where(x <= threshold).dropna().index
-                greater = x.where(x > threshold).dropna().index
-                ent = gain(y, (less, greater))
-                all_threshold.append((ent, threshold, (less, greater)))
-        return max(all_threshold, key=lambda t: t[0])
+    @classmethod
+    def _split_by_threshold(cls, threshold, x, y):
+        gain_before = entropy(y)
+        less = np.where(x < threshold)
+        greater = np.where(x >= threshold)
+        less_label = y.take(less)[0]
+        greater_label = y.take(greater)[0]
+        less_gain = len(less_label) / len(y) * entropy(less_label)
+        greater_gain = len(greater_label) / len(y) * entropy(greater_label)
+        return np.array([gain_before - less_gain - greater_gain, threshold])
+
+
+def gain2(y, mask):
+    gain_before = entropy(y)
+    less, greater = y[mask], y[~mask]
+    less_gain = len(less) / len(y) * entropy(less)
+    greater_gain = len(greater) / len(y) * entropy(greater)
+    return gain_before - (less_gain + greater_gain)
 
 
 def gain(y, indices_list):
@@ -114,19 +140,22 @@ def gain(y, indices_list):
     return gain_before - gain_after
 
 
-def entropy(s):
-    probs = [count / len(s) for count in s.value_counts()]
-    return -1 * sum([p * math.log(p, 2) for p in probs])
+def entropy(labels):
+    value, counts = np.unique(labels, return_counts=True)
+    norm_counts = counts / counts.sum()
+    return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
 
 
-def experiment():
-    id3 = ID3()
+def experiment(verbose=0):
+    # id3 = ID3()
+    id3 = DecisionTreeClassifier(criterion='entropy')
+    print(id3)
     X_train, y_train = utils.load_train()
-    utils.experiment(id3, X_train, y_train, 'M', [1, 5, 10, 50, 100])
+    utils.experiment(id3, X_train, y_train, 'min_samples_split', range(300), verbose=verbose)
 
 
 if __name__ == '__main__':
-    id3 = ID3()
+    id3 = ID3(M=5)
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     id3.fit(X_train, y_train)

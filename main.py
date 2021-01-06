@@ -29,8 +29,8 @@ if __name__ == '__main__':
         id3 = load('id3.joblib')
     print(id3.score(X_test, y_test))
 
-    grid_search = id3 = load('grid_search.joblib')
+    #grid_search = id3 = load('grid_search.joblib')
     #utils.plot_grid_search(grid_search.cv_results_, 'M')
-    ID3.experiment()
-    KNN.experiment()
+    ID3.experiment(3)
+    #KNN.experiment()
 
