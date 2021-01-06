@@ -89,9 +89,9 @@ class ID3(BaseEstimator, ClassifierMixin):
         assert len(np.unique(y)) == 2
         assert X.shape[1] > 1
 
-        a = np.apply_along_axis(cls._find_threshold, axis=0, arr=X, y=y)
-        best_feature = np.argmax(a[0])
-        threshold = a[1, np.argmax(a[0])]
+        features = np.apply_along_axis(cls._find_threshold, axis=0, arr=X, y=y)
+        best_feature = np.argmax(features[0])
+        threshold = features[1, np.argmax(features[0])]
         return cls.ContinuousNode(best_feature, threshold)
 
     @classmethod
@@ -103,14 +103,14 @@ class ID3(BaseEstimator, ClassifierMixin):
         u = np.unique(x)
         u.sort()
         arr = (u[1:] + u[:-1]) / 2
-        args = x, y
         v_split = np.vectorize(cls._split_by_threshold, signature='(),(n),(n)->(2)')
-        a = v_split(arr, x, y)
-        best_tresh_idx = np.argmax(a[:,0])
-        return a[best_tresh_idx]
+        entropy_tresh_all = v_split(arr, x, y)
+        best_tresh_idx = np.argmax(entropy_tresh_all[:,0])
+        return entropy_tresh_all[best_tresh_idx]
 
     @classmethod
     def _split_by_threshold(cls, threshold, x, y):
+        assert x.ndim == y.ndim == 1
         gain_before = entropy(y)
         less = np.where(x < threshold)
         greater = np.where(x >= threshold)
@@ -121,37 +121,17 @@ class ID3(BaseEstimator, ClassifierMixin):
         return np.array([gain_before - less_gain - greater_gain, threshold])
 
 
-def gain2(y, mask):
-    gain_before = entropy(y)
-    less, greater = y[mask], y[~mask]
-    less_gain = len(less) / len(y) * entropy(less)
-    greater_gain = len(greater) / len(y) * entropy(greater)
-    return gain_before - (less_gain + greater_gain)
-
-
-def gain(y, indices_list):
-    assert len(indices_list) == 2
-    assert len(y) == len(indices_list[0]) + len(indices_list[1])
-    # calculate impurity before split
-    gain_before = entropy(y)
-    # calculate impurity after split
-    gain_after = sum([(len(indices) / len(y)) * entropy(y.loc[indices]) for indices in indices_list])
-
-    return gain_before - gain_after
-
-
 def entropy(labels):
     value, counts = np.unique(labels, return_counts=True)
     norm_counts = counts / counts.sum()
     return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
 
 
-def experiment(verbose=0):
-    # id3 = ID3()
-    id3 = DecisionTreeClassifier(criterion='entropy')
-    print(id3)
+def experiment(verbose=0, range=(1, 5, 10, 100, 200, 300), scoring=None):
+    id3 = ID3()
+    #id3 = DecisionTreeClassifier(criterion='entropy')
     X_train, y_train = utils.load_train()
-    utils.experiment(id3, X_train, y_train, 'min_samples_split', range(300), verbose=verbose)
+    return utils.experiment(id3, X_train, y_train, 'M', range, verbose=verbose, scoring=scoring)
 
 
 if __name__ == '__main__':
