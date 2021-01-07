@@ -12,7 +12,6 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
         self.k = k
         self.x_train = None
         self.y_train = None
-        self.n_classes = None
         self.weights = weights
 
     def fit(self, X, y):
@@ -20,31 +19,38 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
         assert len(X) > self.k
         assert self.k > 0
         self.x_train, self.y_train = check_X_y(X, y)
-        self.n_classes = len(np.unique(self.y_train))
+
         return self
+
+    def _decision(self, indices, x_test):
+        '''
+        each neighbor decide which label to vote to
+        in this implemetation to his y target
+        '''
+        assert self.y_train is not None
+        return np.take(self.y_train, indices)
 
     def predict(self, x_test: np.ndarray):
         assert x_test.shape[1] == self.x_train.shape[1]
         x_test = check_array(x_test)
-        check_is_fitted(self, ['x_train', 'y_train', 'n_classes'])
+        check_is_fitted(self, ['x_train'])
         dist_matrix = euclidean_dist(self.x_train, x_test)
-        indices = np.argpartition(dist_matrix, self.k, axis=0)[:self.k]
-        nearest_dists = np.take(self.y_train, indices)
-        y_pred = mode(nearest_dists, self.weights)
+        indices = np.argpartition(dist_matrix, self.k, axis=0)[:self.k].T
+        nearest_dists = self._decision(indices, x_test)
+        y_pred = majority(nearest_dists, self.weights)
         assert len(y_pred) == len(x_test)
         return y_pred
 
 
-def mode(array, weights_dict=None):
+def majority(array, weights_dict=None):
     classes, indices = np.unique(array, return_inverse=True)
-    K, N = array.shape
-    indices = indices.reshape(K, N).T
+    N, K = array.shape
+    indices = indices.reshape(N, K)
     if weights_dict:
         keys = classes
         values = np.array([weights_dict[classes[0]], weights_dict[classes[1]]])
         sidx = keys.argsort()
         weights = values[sidx[np.searchsorted(keys, array, sorter=sidx)]]
-        weights = weights.T
     else:
         weights = [None]*N
     binned_indices = np.empty((N, 2))
@@ -64,10 +70,10 @@ def euclidean_dist(x1, x2):
     return np.sqrt((ab.T + x1_square).T + x2_square + 1e-7)
 
 
-def experiment(verbose=0, range=np.arange(1, 250), scoring=None, weights=None):
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(weights=weights))])
+def experiment(range=np.arange(1, 250), **kw):
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(**kw))])
     X_train, y_train = utils.load_train()
-    return utils.experiment(pipe, X_train, y_train, 'knn__k', range, verbose=verbose, scoring=scoring)
+    return utils.experiment(pipe, X_train, y_train, 'knn__k', range, **kw)
 
 
 if __name__ == '__main__':

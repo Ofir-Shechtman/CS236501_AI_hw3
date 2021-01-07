@@ -11,10 +11,17 @@ from collections import Counter
 import utils
 
 
+def entropy(labels):
+    value, counts = np.unique(labels, return_counts=True)
+    norm_counts = counts / counts.sum()
+    return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
+
+
 class ID3(BaseEstimator, ClassifierMixin):
-    def __init__(self, M=0):
+    def __init__(self, M=0, metric=entropy):
         self.M = M
         self._tree = None
+        self.metric = metric
 
     def fit(self, X, y):
         X, y = check_X_y(X, y)
@@ -24,6 +31,8 @@ class ID3(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
         check_is_fitted(self, ['_tree'])
+        if X.ndim == 1:
+            return self._decision(self._tree, X)
         X = check_array(X)
         prediction = []
         for i in range(len(X)):
@@ -62,7 +71,6 @@ class ID3(BaseEstimator, ClassifierMixin):
             else:
                 return self.greater
 
-
     def _generate_tree(self, X, y):
         assert len(X) == len(y)
         assert len(X) > 0
@@ -82,20 +90,18 @@ class ID3(BaseEstimator, ClassifierMixin):
         node.greater = self._generate_tree(X.take(greater, axis=0)[0], y.take(greater)[0])
         return node
 
-    @classmethod
-    def _split_attribute(cls, X, y):
+    def _split_attribute(self, X, y):
         assert len(X) == len(y)
         assert len(X) > 1
         assert len(np.unique(y)) == 2
         assert X.shape[1] > 1
 
-        features = np.apply_along_axis(cls._find_threshold, axis=0, arr=X, y=y)
+        features = np.apply_along_axis(self._find_threshold, axis=0, arr=X, y=y)
         best_feature = np.argmax(features[0])
         threshold = features[1, np.argmax(features[0])]
-        return cls.ContinuousNode(best_feature, threshold)
+        return self.ContinuousNode(best_feature, threshold)
 
-    @classmethod
-    def _find_threshold(cls, x, y):
+    def _find_threshold(self, x, y):
         assert len(x) == len(y)
         assert len(x) > 1
         assert len(np.unique(y)) == 2
@@ -103,40 +109,37 @@ class ID3(BaseEstimator, ClassifierMixin):
         u = np.unique(x)
         u.sort()
         arr = (u[1:] + u[:-1]) / 2
-        v_split = np.vectorize(cls._split_by_threshold, signature='(),(n),(n)->(2)')
+        v_split = np.vectorize(self._split_by_threshold, signature='(),(n),(n)->(2)')
         entropy_tresh_all = v_split(arr, x, y)
-        best_tresh_idx = np.argmax(entropy_tresh_all[:,0])
+        best_tresh_idx = np.argmax(entropy_tresh_all[:, 0])
         return entropy_tresh_all[best_tresh_idx]
 
-    @classmethod
-    def _split_by_threshold(cls, threshold, x, y):
+    def _split_by_threshold(self, threshold, x, y):
         assert x.ndim == y.ndim == 1
-        gain_before = entropy(y)
+        gain_before = self.metric(y)
         less = np.where(x < threshold)
         greater = np.where(x >= threshold)
         less_label = y.take(less)[0]
         greater_label = y.take(greater)[0]
-        less_gain = len(less_label) / len(y) * entropy(less_label)
-        greater_gain = len(greater_label) / len(y) * entropy(greater_label)
+        less_gain = len(less_label) / len(y) * self.metric(less_label)
+        greater_gain = len(greater_label) / len(y) * self.metric(greater_label)
         return np.array([gain_before - less_gain - greater_gain, threshold])
 
 
-def entropy(labels):
-    value, counts = np.unique(labels, return_counts=True)
-    norm_counts = counts / counts.sum()
-    return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
-
-
-def experiment(verbose=0, range=(1, 5, 10, 100, 200, 300), scoring=None):
+def experiment(range=(1, 5, 10, 100, 200, 300), **kw):
     id3 = ID3()
-    #id3 = DecisionTreeClassifier(criterion='entropy')
+    # id3 = DecisionTreeClassifier(criterion='entropy')
     X_train, y_train = utils.load_train()
-    return utils.experiment(id3, X_train, y_train, 'M', range, verbose=verbose, scoring=scoring)
+    return utils.experiment(id3, X_train, y_train, 'M', range, **kw)
 
 
-if __name__ == '__main__':
+def main():
     id3 = ID3(M=5)
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     id3.fit(X_train, y_train)
     print(id3.score(X_test, y_test))
+
+
+if __name__ == '__main__':
+    main()

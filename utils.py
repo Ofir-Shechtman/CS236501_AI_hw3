@@ -20,8 +20,13 @@ def load_test():
     return _load(TEST_FILE, TO_PREDICT)
 
 
-def experiment(pipe, X_train, y_train, hp_name, hp_values, n_splits=5, random_state=MY_ID, verbose=0, scoring=None):
-    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+def experiment(pipe, X_train, y_train, hp_name, hp_values, **kw):
+    random_state = kw.get('random_state', MY_ID)
+    n_splits = kw.get('n_splits', 5)
+    verbose = kw.get('verbose', 0)
+    scoring = kw.get('scoring', None)
+
+    cv = KFold(shuffle=True, random_state=random_state, n_splits=n_splits)
     parameters = {hp_name: hp_values}
     grid_search = GridSearchCV(pipe, parameters, cv=cv, verbose=verbose, scoring=scoring)
     grid_search.fit(X_train, y_train)
