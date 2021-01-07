@@ -37,7 +37,8 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
 
 def mode(array, weights_dict=None):
     classes, indices = np.unique(array, return_inverse=True)
-    indices = indices.reshape(array.shape)
+    K, N = array.shape
+    indices = indices.reshape(K, N).T
     if weights_dict:
         keys = classes
         values = np.array([weights_dict[classes[0]], weights_dict[classes[1]]])
@@ -45,15 +46,10 @@ def mode(array, weights_dict=None):
         weights = values[sidx[np.searchsorted(keys, array, sorter=sidx)]]
         weights = weights.T
     else:
-        weights = [None]*len(array)
-    binned_indices = np.empty((array.shape[1], 2))
-    for i, (idx, weight) in enumerate(zip(indices.T, weights)):
-        binned_indices[i] = np.bincount(idx, weight, minlength=2)
-    #args_for_bincount_fn = weights, len(classes)
-    #binned_indices = np.apply_along_axis(np.bincount,
-    #                                     0,
-    #                                     indices,
-    #                                     *args_for_bincount_fn)
+        weights = [None]*N
+    binned_indices = np.empty((N, 2))
+    for i, (idx, weight) in enumerate(zip(indices, weights)):
+        binned_indices[i] = np.bincount(idx, weight)
 
     most_common = classes[np.argmax(binned_indices, axis=1)]
     return most_common
