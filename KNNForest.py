@@ -10,22 +10,23 @@ import utils
 
 
 class KNNForest(KNN.KNNClassifier):
-    def __init__(self, N, K, p, M=0, **kw):
-        super().__init__(k=K)
-        assert N > 0
-        assert 0 < K <= N
-        assert 0.3 <= p <= 0.7
+    def __init__(self, N, k, p, M=0, metric=None):
+        super().__init__(k=k)
         self.N = N
         self.p = p
         self.M = M
-        self.kw = kw
+        self.metric = metric
 
     def fit(self, X, y):
+        assert self.N > 0
+        assert 0 < self.k < self.N
+        assert 0.3 <= self.p <= 0.7
         assert len(X) == len(y)
         X, y = check_X_y(X, y)
         samples = [sample(X, y, self.p) for _ in range(self.N)]
         self.x_train = np.stack([np.mean(X, axis=0) for X, y in samples])
-        self.trees = [ID3.ID3(self.M, **self.kw).fit(X, y) for X, y in samples]
+        self.trees = [ID3.ID3(self.M, metric=self.metric).fit(X, y) for X, y in samples]
+        return self
 
     def _decision(self, indices_mat, x_test):
         '''

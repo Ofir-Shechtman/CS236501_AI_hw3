@@ -25,10 +25,11 @@ def experiment(pipe, X_train, y_train, hp_name, hp_values, **kw):
     n_splits = kw.get('n_splits', 5)
     verbose = kw.get('verbose', 0)
     scoring = kw.get('scoring', None)
+    refit = kw.get('refit', True)
 
     cv = KFold(shuffle=True, random_state=random_state, n_splits=n_splits)
     parameters = {hp_name: hp_values}
-    grid_search = GridSearchCV(pipe, parameters, cv=cv, verbose=verbose, scoring=scoring)
+    grid_search = GridSearchCV(pipe, parameters, cv=cv, verbose=verbose, scoring=scoring, refit=refit)
     grid_search.fit(X_train, y_train)
     plot_grid_search(grid_search.cv_results_, hp_name)
     return grid_search.best_params_.get(hp_name)

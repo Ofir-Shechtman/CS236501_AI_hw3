@@ -1,4 +1,4 @@
-from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.model_selection import KFold, GridSearchCV, ParameterGrid
 
 import KNN
 import ID3
@@ -10,7 +10,6 @@ import numpy as np
 # from scipy.stats import mode
 import KNNForest
 import utils
-
 
 
 def gini(labels):
@@ -25,10 +24,14 @@ if __name__ == '__main__':
     pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest.KNNForest(9, 5, 0.6, 0, metric=gini))])
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
-    pipe.fit(X_train, y_train)
+    #clf = KNNForest.KNNForest(N=15, k=9, p=0.6, M=1, metric=None).fit(X_train, y_train)
     cv = KFold(shuffle=True, random_state=206180374, n_splits=5)
-    parameters = {'M': (1, 5), 'N':(5, 15, 23), 'K':(5, 9), 'p':(0.4, 0.6)}
-    grid_search = GridSearchCV(pipe, parameters, cv=cv, verbose=3, scoring=None)
+    parameters = {'M': [1, 10], 'N': [10, 15], 'k': [5, 9], 'p': [0.5, 0.6], 'metric':[gini, None]}
+    parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
+    grid_search = GridSearchCV(pipe, parameters, cv=cv, verbose=2, scoring=None, n_jobs=1)
+    print(pipe.get_params().keys())
+    print(list(ParameterGrid(parameters)))
     grid_search.fit(X_train, y_train)
     print(grid_search.best_params_)
-    #model = SelectFromModel(pipe, prefit=True)
+    print(grid_search.cv_results_)
+    # model = SelectFromModel(pipe, prefit=True)

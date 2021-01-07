@@ -18,10 +18,10 @@ def entropy(labels):
 
 
 class ID3(BaseEstimator, ClassifierMixin):
-    def __init__(self, M=0, metric=entropy):
+    def __init__(self, M=0, metric=None):
         self.M = M
         self._tree = None
-        self.metric = metric
+        self.metric = metric if metric else entropy
 
     def fit(self, X, y):
         X, y = check_X_y(X, y)

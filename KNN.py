@@ -31,6 +31,7 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
         return np.take(self.y_train, indices)
 
     def predict(self, x_test: np.ndarray):
+
         assert x_test.shape[1] == self.x_train.shape[1]
         x_test = check_array(x_test)
         check_is_fitted(self, ['x_train'])
