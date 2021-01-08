@@ -1,19 +1,20 @@
-from sklearn.model_selection import KFold, GridSearchCV
-from sklearn.preprocessing import MinMaxScaler
-
 import ID3
 import KNN
-from joblib import dump, load
+import CostSensitiveKNN
+import KNNForest
+import improvedKNNForest
 
-import utils
-from dataset import load_train, load_test
-from sklearn.metrics import accuracy_score
-import numpy as np
-import matplotlib.pyplot as plt
-
-FIT = False
 
 if __name__ == '__main__':
+    print('__ID3__')
+    ID3.main()
     ID3.experiment()
+    print('__KNN__')
+    KNN.main()
     KNN.experiment()
-
+    print('__CostSensitiveKNN__')
+    CostSensitiveKNN.main()
+    print('__KNNForest__')
+    KNNForest.main()
+    print('__improvedKNNForest__')
+    improvedKNNForest.main()

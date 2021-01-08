@@ -1,27 +1,15 @@
-import math
-from typing import Tuple, List, Any
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
-import pandas as pd
 import numpy as np
 from abc import ABCMeta
 from collections import Counter
-
 import utils
 
 
-def entropy(labels):
-    value, counts = np.unique(labels, return_counts=True)
-    norm_counts = counts / counts.sum()
-    return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
-
-
 class ID3(BaseEstimator, ClassifierMixin):
-    def __init__(self, M=2, metric=None):
+    def __init__(self, M=2):
         self.M = M
         self._tree = None
-        self.metric = metric if metric else entropy
 
     def fit(self, X, y):
         X, y = check_X_y(X, y)
@@ -116,49 +104,34 @@ class ID3(BaseEstimator, ClassifierMixin):
 
     def _split_by_threshold(self, threshold, x, y):
         assert x.ndim == y.ndim == 1
-        gain_before = self.metric(y)
+        gain_before = entropy(y)
         less = np.where(x < threshold)
         greater = np.where(x >= threshold)
         less_label = y.take(less)[0]
         greater_label = y.take(greater)[0]
-        less_gain = len(less_label) / len(y) * self.metric(less_label)
-        greater_gain = len(greater_label) / len(y) * self.metric(greater_label)
+        less_gain = len(less_label) / len(y) * entropy(less_label)
+        greater_gain = len(greater_label) / len(y) * entropy(greater_label)
         return np.array([gain_before - less_gain - greater_gain, threshold])
 
+def entropy(labels):
+    value, counts = np.unique(labels, return_counts=True)
+    norm_counts = counts / counts.sum()
+    return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
 
-def experiment(r=(1, 5, 10, 100, 200, 300), **kw):
+
+def experiment(**kw):
     id3 = ID3()
-    id3 = DecisionTreeClassifier(criterion='entropy')
+    parameters = {'M': [2, 5, 10, 100, 200, 300]}
     X_train, y_train = utils.load_train()
-    return utils.experiment(id3, X_train, y_train, {'min_samples_split':range(2,350)}, **kw)
+    utils.experiment(id3, X_train, y_train, parameters, **kw)
 
 
 def main():
-    id3 = ID3(300)
+    id3 = ID3()
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     id3.fit(X_train, y_train)
     print(id3.score(X_test, y_test))
-
-
-    def sk(m=2):
-        id3 = DecisionTreeClassifier(criterion='entropy', min_samples_split=m)
-        X_train, y_train = utils.load_train()
-        X_test, y_test = utils.load_test()
-        id3.fit(X_train, y_train)
-        return id3.score(X_test, y_test)
-
-    def rsk(m=1, r=10):
-        return max([sk(m) for _ in range(r)])
-
-    print(sk(300))
-'''
-    d= {m:rsk(m, 10) for m in range(2, 300)}
-    print(d)
-    for k, v in d.items():
-        print(k,v)
-    maxx= max(d.items(), key=lambda t:t[1])
-    print(maxx)'''
 
 
 if __name__ == '__main__':

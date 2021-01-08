@@ -1,7 +1,6 @@
 import pandas as pd
 from sklearn.model_selection import KFold, GridSearchCV
 import matplotlib.pyplot as plt
-from joblib import dump, load
 import numpy as np
 
 MY_ID = 206180374
@@ -38,9 +37,8 @@ def experiment(model, X_train, y_train, parameters,
         assert len(parameters) == 1
     np.random.seed(random_state)
     cv = KFold(shuffle=True, random_state=random_state, n_splits=n_splits)
-    grid_search = GridSearchCV(model, parameters, cv=cv, verbose=verbose, scoring=scoring, refit=refit)
+    grid_search = GridSearchCV(model, parameters, cv=cv, verbose=verbose, scoring=scoring, refit=refit, n_jobs=-1)
     grid_search.fit(X_train, y_train)
-    dump(grid_search, 'KNNForest_cv.joblib')
     if plot:
         hp_name = list(parameters.keys())[0]
         plot_grid_search(grid_search.cv_results_, hp_name)

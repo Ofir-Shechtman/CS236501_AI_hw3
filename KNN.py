@@ -30,7 +30,6 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
         return np.take(self.y_train, indices)
 
     def predict(self, x_test: np.ndarray):
-
         assert x_test.shape[1] == self.x_train.shape[1]
         x_test = check_array(x_test)
         check_is_fitted(self, ['x_train'])
@@ -46,15 +45,15 @@ def majority(array, kneighbors, weights=None):
     classes, indices = np.unique(array, return_inverse=True)
     N, K = array.shape
     indices = indices.reshape(N, K)
-    if isinstance(weights, dict): #weights by value
+    if isinstance(weights, dict):  # weights by value
         keys = classes
         values = np.array([weights[classes[0]], weights[classes[1]]])
         sidx = keys.argsort()
         weights = values[sidx[np.searchsorted(keys, array, sorter=sidx)]]
-    elif isinstance(weights, np.ndarray): #weights by neighbor
+    elif isinstance(weights, np.ndarray):  # weights by neighbor
         weights = weights[kneighbors]
     else:
-        weights = [None]*N
+        weights = [None] * N
     binned_indices = np.empty((N, 2))
     for i, (idx, weight) in enumerate(zip(indices, weights)):
         binned_indices[i] = np.bincount(idx, weight)
@@ -70,15 +69,18 @@ def euclidean_dist(x1, x2):
     return np.sqrt((ab.T + x1_square).T + x2_square + 1e-7)
 
 
-def experiment(range=np.arange(1, 250), **kw):
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(weights=kw.pop('weights')))])
+def experiment(**kw):
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier())])
+    parameters = {'knn__k': np.arange(1, 250)}
     X_train, y_train = utils.load_train()
-    return utils.experiment(pipe, X_train, y_train, {'knn__k': range}, **kw)
+    return utils.experiment(pipe, X_train, y_train, parameters, **kw)
+
+
+def main():
+    pipe, best_params, best_score = experiment(plot=False)
+    X_test, y_test = utils.load_test()
+    print(pipe.score(X_test, y_test))
 
 
 if __name__ == '__main__':
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(8))])
-    X_train, y_train = utils.load_train()
-    X_test, y_test = utils.load_test()
-    pipe.fit(X_train, y_train)
-    print(pipe.score(X_test, y_test))
+    main()

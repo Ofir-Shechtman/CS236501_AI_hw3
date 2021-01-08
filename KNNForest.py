@@ -1,23 +1,17 @@
-from sklearn.tree import DecisionTreeClassifier
-
 import KNN
 import ID3
-from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import check_X_y
 import numpy as np
-# from scipy.stats import mode
 import utils
-from joblib import dump, load
 
 
 class KNNForest(KNN.KNNClassifier):
-    def __init__(self, N, k, p=None, random_state=utils.random_state(), M=0, metric=None):
+    def __init__(self, N, k, p=None, random_state=utils.random_state(), M=0):
         super().__init__(k=k)
         self.N = N
         self.M = M
-        self.metric = metric
         self.random_state = random_state
         self.p = p
 
@@ -35,9 +29,9 @@ class KNNForest(KNN.KNNClassifier):
 
         samples = [sample(X, y, p, self.random_state) for p in self.weights]
         self.x_train = np.stack([np.mean(X, axis=0) for X, y in samples])
-        # self.trees = [ID3.ID3(self.M, metric=self.metric).fit(X, y) for X, y in samples]
-        self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=self.random_state).fit(X, y) for X, y in
-                      samples]
+        self.trees = [ID3.ID3(self.M).fit(X, y) for X, y in samples]
+        #self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=self.random_state).fit(X, y) for X, y in
+        #              samples]
         return self
 
     def _decision(self, indices_mat, x_test):
@@ -58,17 +52,19 @@ def sample(X, y, p, random_state):
     return X[mask], y[mask]
 
 
-def experiment():
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(10, 7, p=None, metric=None))])
+def experiment(**kw):
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(10, 7, p=None))])
     X_train, y_train = utils.load_train()
-    parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17], 'p':np.linspace(0.3, 0.7, num=5)}
+    parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
     parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
-    return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3)
+    return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3, **kw)
 
-
-if __name__ == '__main__':
-    pipe, best_params, best_score = experiment()
+def main():
+    pipe, best_params, best_score = experiment(verbose=0)
     print(best_params)
     print(best_score)
     X_test, y_test = utils.load_test()
     print(pipe.score(X_test, y_test))
+
+if __name__ == '__main__':
+    main()
