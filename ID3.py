@@ -18,21 +18,21 @@ def entropy(labels):
 
 
 class ID3(BaseEstimator, ClassifierMixin):
-    def __init__(self, M=0, metric=None):
+    def __init__(self, M=2, metric=None):
         self.M = M
         self._tree = None
         self.metric = metric if metric else entropy
 
     def fit(self, X, y):
         X, y = check_X_y(X, y)
+        assert self.M >= 2
 
         self._tree = self._generate_tree(X, y)
         return self
 
     def predict(self, X):
         check_is_fitted(self, ['_tree'])
-        if X.ndim == 1:
-            return self._decision(self._tree, X)
+        assert X.ndim == 2
         X = check_array(X)
         prediction = []
         for i in range(len(X)):
@@ -79,7 +79,7 @@ class ID3(BaseEstimator, ClassifierMixin):
         assert len(np.unique(y)) == 2
         assert X.ndim == 2
         assert y.ndim == 1
-        if len(X) < self.M:  # min_samples_split, label is the most common
+        if len(X) <= self.M:  # min_samples_split, label is the most common
             most_common = Counter(y).most_common(1)[0]
             return self.Leaf(label=most_common[0])
 
@@ -126,19 +126,39 @@ class ID3(BaseEstimator, ClassifierMixin):
         return np.array([gain_before - less_gain - greater_gain, threshold])
 
 
-def experiment(range=(1, 5, 10, 100, 200, 300), **kw):
+def experiment(r=(1, 5, 10, 100, 200, 300), **kw):
     id3 = ID3()
-    # id3 = DecisionTreeClassifier(criterion='entropy')
+    id3 = DecisionTreeClassifier(criterion='entropy')
     X_train, y_train = utils.load_train()
-    return utils.experiment(id3, X_train, y_train, 'M', range, **kw)
+    return utils.experiment(id3, X_train, y_train, {'min_samples_split':range(2,350)}, **kw)
 
 
 def main():
-    id3 = ID3(M=5)
+    id3 = ID3(300)
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     id3.fit(X_train, y_train)
     print(id3.score(X_test, y_test))
+
+
+    def sk(m=2):
+        id3 = DecisionTreeClassifier(criterion='entropy', min_samples_split=m)
+        X_train, y_train = utils.load_train()
+        X_test, y_test = utils.load_test()
+        id3.fit(X_train, y_train)
+        return id3.score(X_test, y_test)
+
+    def rsk(m=1, r=10):
+        return max([sk(m) for _ in range(r)])
+
+    print(sk(300))
+'''
+    d= {m:rsk(m, 10) for m in range(2, 300)}
+    print(d)
+    for k, v in d.items():
+        print(k,v)
+    maxx= max(d.items(), key=lambda t:t[1])
+    print(maxx)'''
 
 
 if __name__ == '__main__':

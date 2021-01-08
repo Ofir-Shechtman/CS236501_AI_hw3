@@ -19,19 +19,18 @@ def gini(labels):
     score = 1 - sum([i ** 2 for i in norm_counts])
     return score
 
+def experiment():
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest.KNNForest(10, 7, p=None, metric=None))])
+    X_train, y_train = utils.load_train()
+    parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17]}
+    parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
+    return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3)
+
 
 if __name__ == '__main__':
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest.KNNForest(9, 5, 0.6, 0, metric=gini))])
-    X_train, y_train = utils.load_train()
+    pipe, best_params, best_score = experiment()
+    print(best_params)
+    print(best_score)
     X_test, y_test = utils.load_test()
-    #clf = KNNForest.KNNForest(N=15, k=9, p=0.6, M=1, metric=None).fit(X_train, y_train)
-    cv = KFold(shuffle=True, random_state=206180374, n_splits=5)
-    parameters = {'M': [1, 10], 'N': [10, 15], 'k': [5, 9], 'p': [0.5, 0.6], 'metric':[gini, None]}
-    parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
-    grid_search = GridSearchCV(pipe, parameters, cv=cv, verbose=2, scoring=None, n_jobs=1)
-    print(pipe.get_params().keys())
-    print(list(ParameterGrid(parameters)))
-    grid_search.fit(X_train, y_train)
-    print(grid_search.best_params_)
-    print(grid_search.cv_results_)
-    # model = SelectFromModel(pipe, prefit=True)
+    print(pipe.score(X_test, y_test))
+

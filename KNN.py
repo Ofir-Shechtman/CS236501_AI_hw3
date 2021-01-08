@@ -3,7 +3,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 import numpy as np
-# from scipy.stats import mode
 import utils
 
 
@@ -25,7 +24,7 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
     def _decision(self, indices, x_test):
         '''
         each neighbor decide which label to vote to
-        in this implemetation to his y target
+        in this implementation to his y target
         '''
         assert self.y_train is not None
         return np.take(self.y_train, indices)
@@ -38,20 +37,22 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
         dist_matrix = euclidean_dist(self.x_train, x_test)
         indices = np.argpartition(dist_matrix, self.k, axis=0)[:self.k].T
         nearest_dists = self._decision(indices, x_test)
-        y_pred = majority(nearest_dists, self.weights)
+        y_pred = majority(nearest_dists, indices, self.weights)
         assert len(y_pred) == len(x_test)
         return y_pred
 
 
-def majority(array, weights_dict=None):
+def majority(array, kneighbors, weights=None):
     classes, indices = np.unique(array, return_inverse=True)
     N, K = array.shape
     indices = indices.reshape(N, K)
-    if weights_dict:
+    if isinstance(weights, dict): #weights by value
         keys = classes
-        values = np.array([weights_dict[classes[0]], weights_dict[classes[1]]])
+        values = np.array([weights[classes[0]], weights[classes[1]]])
         sidx = keys.argsort()
         weights = values[sidx[np.searchsorted(keys, array, sorter=sidx)]]
+    elif isinstance(weights, np.ndarray): #weights by neighbor
+        weights = weights[kneighbors]
     else:
         weights = [None]*N
     binned_indices = np.empty((N, 2))
@@ -65,16 +66,14 @@ def majority(array, weights_dict=None):
 def euclidean_dist(x1, x2):
     x1_square = np.diagonal(np.matmul(x1, x1.T))
     x2_square = np.diagonal(np.matmul(x2, x2.T))
-
     ab = np.matmul(x1, x2.T) * -2
-    assert ((ab.T + x1_square).T + x2_square).all() >= 0
     return np.sqrt((ab.T + x1_square).T + x2_square + 1e-7)
 
 
 def experiment(range=np.arange(1, 250), **kw):
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(**kw))])
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(weights=kw.pop('weights')))])
     X_train, y_train = utils.load_train()
-    return utils.experiment(pipe, X_train, y_train, 'knn__k', range, **kw)
+    return utils.experiment(pipe, X_train, y_train, {'knn__k': range}, **kw)
 
 
 if __name__ == '__main__':

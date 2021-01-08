@@ -14,6 +14,6 @@ import matplotlib.pyplot as plt
 FIT = False
 
 if __name__ == '__main__':
-    #ID3.experiment(3)
+    ID3.experiment()
     KNN.experiment()
 
