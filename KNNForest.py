@@ -1,3 +1,4 @@
+from sklearn.tree import DecisionTreeClassifier
 import KNN
 import ID3
 from sklearn.pipeline import Pipeline
@@ -8,11 +9,11 @@ import utils
 
 
 class KNNForest(KNN.KNNClassifier):
-    def __init__(self, N, k, p=None, random_state=utils.random_state(), M=0):
+    def __init__(self, N, k, seed=utils.MY_ID, p=None, M=0):
         super().__init__(k=k)
         self.N = N
         self.M = M
-        self.random_state = random_state
+        self.seed = seed
         self.p = p
 
 
@@ -26,12 +27,11 @@ class KNNForest(KNN.KNNClassifier):
             self.weights = np.full(self.N, self.p)
         else:
             self.weights = np.linspace(0.3, 0.7, num=self.N)
-
-        samples = [sample(X, y, p, self.random_state) for p in self.weights]
+        random_state = utils.random_state(self.seed)
+        samples = [sample(X, y, p, random_state) for p in self.weights]
         self.x_train = np.stack([np.mean(X, axis=0) for X, y in samples])
         self.trees = [ID3.ID3(self.M).fit(X, y) for X, y in samples]
-        #self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=self.random_state).fit(X, y) for X, y in
-        #              samples]
+        #self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=random_state).fit(X, y) for X, y in samples]
         return self
 
     def _decision(self, indices_mat, x_test):
@@ -59,11 +59,18 @@ def experiment(**kw):
     parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
     return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3, **kw)
 
-def main():
+def main2():
     pipe, best_params, best_score = experiment(verbose=0)
     print(best_params)
     print(best_score)
     X_test, y_test = utils.load_test()
+    print(pipe.score(X_test, y_test))
+
+def main():
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(N=10, k=7, p=0.7, M=2))])
+    X_train, y_train = utils.load_train()
+    X_test, y_test = utils.load_test()
+    pipe.fit(X_train, y_train)
     print(pipe.score(X_test, y_test))
 
 if __name__ == '__main__':

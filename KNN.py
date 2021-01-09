@@ -76,9 +76,17 @@ def experiment(**kw):
     return utils.experiment(pipe, X_train, y_train, parameters, **kw)
 
 
-def main():
+def main2():
     pipe, best_params, best_score = experiment(plot=False)
     X_test, y_test = utils.load_test()
+    print(pipe.score(X_test, y_test))
+
+
+def main():
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier(k=1))])
+    X_train, y_train = utils.load_train()
+    X_test, y_test = utils.load_test()
+    pipe.fit(X_train, y_train)
     print(pipe.score(X_test, y_test))
 
 

@@ -4,10 +4,10 @@ from sklearn.preprocessing import MinMaxScaler
 import KNN
 import numpy as np
 import utils
-
+SICK, HEALTHY = 1, 0
 
 def sensitive_loss(y_true, y_predicted):
-    sick, healthy = 'M', 'B'
+    sick, healthy = 1, 0
     conf_mat = confusion_matrix(y_true, y_predicted, normalize='true', labels=[healthy, sick])
     FN = conf_mat[1][0]
     FP = conf_mat[0][1]
@@ -21,15 +21,26 @@ def experiment(weights=None, **kw):
     sensitive_scorer = make_scorer(sensitive_loss, greater_is_better=False)
     return utils.experiment(pipe, X_train, y_train, parameters, scoring=sensitive_scorer, **kw)
 
-def main():
-    weights = {'M': 10, 'B': 1}
+
+def main2():
+    weights = {SICK: 10, HEALTHY: 1}
     X_test, y_test = utils.load_test()
     for w in [None, weights]:
         pipe, best_params, best_score = experiment(w, plot=True)
         y_predicted = pipe.predict(X_test)
+        print(f'k={best_params}')
         print(sensitive_loss(y_test, y_predicted))
         print(pipe.score(X_test, y_test))
 
+def main():
+    weights = {SICK: 10, HEALTHY: 1}
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNN.KNNClassifier(k=14, weights=weights))])
+    X_train, y_train = utils.load_train()
+    X_test, y_test = utils.load_test()
+    pipe.fit(X_train, y_train)
+    y_predicted = pipe.predict(X_test)
+    print(sensitive_loss(y_test, y_predicted))
+
+
 if __name__ == '__main__':
     main()
-

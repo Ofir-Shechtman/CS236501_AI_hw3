@@ -8,13 +8,15 @@ TRAIN_FILE = "train.csv"
 TEST_FILE = "test.csv"
 TO_PREDICT = 'diagnosis'
 
+
 def random_state(seed=MY_ID):
     return np.random.RandomState(seed=seed)
 
 def _load(input_file, target):
     df = pd.read_csv(input_file)
     X = df.drop(target, axis=1)
-    y = df[target]
+    diagnosis_map = {'B': 0, 'M': 1}
+    y = df[target].map(diagnosis_map)
     return X, y
 
 
