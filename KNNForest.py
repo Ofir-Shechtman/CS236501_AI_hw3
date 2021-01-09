@@ -38,7 +38,7 @@ class KNNForest(KNN.KNNClassifier):
         '''
         each neighbor decide which label to vote to
         '''
-        trees_decision = np.empty(indices_mat.shape, dtype=str)
+        trees_decision = np.empty(indices_mat.shape)
         for sample, (indices, x) in enumerate(zip(indices_mat, x_test)):
             x = np.expand_dims(x_test[sample], axis=0)
             for tree_idx, tree in enumerate(indices):
@@ -55,8 +55,12 @@ def sample(X, y, p, random_state):
 def experiment(**kw):
     pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(10, 7, p=None))])
     X_train, y_train = utils.load_train()
-    parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
-    parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
+    #parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
+    #parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
+    param10 = {'M': [2, 20], 'N': [10], 'k': [7, 9], 'p': np.linspace(0.3, 0.7, num=5)}
+    param20 = {'M': [2, 20], 'N': [20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
+    parameters = [param10, param20]
+    parameters = [{'knn_forest__' + k: v for k, v in parametersd.items()} for parametersd in parametersd]
     return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3, **kw)
 
 def main2():

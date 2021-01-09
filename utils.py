@@ -1,7 +1,10 @@
 import pandas as pd
 from sklearn.model_selection import KFold, GridSearchCV
 import matplotlib.pyplot as plt
+import warnings
 import numpy as np
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 MY_ID = 206180374
 TRAIN_FILE = "train.csv"
@@ -35,12 +38,13 @@ def experiment(model, X_train, y_train, parameters,
                verbose=0,
                scoring=None,
                refit=True,
-               plot=True):
+               plot=True,
+               n_jobs=1):
     if plot:
         assert len(parameters) == 1
     np.random.seed(random_state)
     cv = KFold(shuffle=True, random_state=random_state, n_splits=n_splits)
-    grid_search = GridSearchCV(model, parameters, cv=cv, verbose=verbose, scoring=scoring, refit=refit, n_jobs=-1)
+    grid_search = GridSearchCV(model, parameters, cv=cv, verbose=verbose, scoring=scoring, refit=refit, n_jobs=n_jobs)
     grid_search.fit(X_train, y_train)
     if plot:
         hp_name = list(parameters.keys())[0]

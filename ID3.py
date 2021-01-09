@@ -113,8 +113,7 @@ class ID3(BaseEstimator, ClassifierMixin):
         greater_gain = len(greater_label) / len(y) * entropy(greater_label)
         return np.array([gain_before - less_gain - greater_gain, threshold])
 
-
-def entropy(labels: np.ndarray) -> float:
+def entropy(labels):
     value, counts = np.unique(labels, return_counts=True)
     norm_counts = counts / counts.sum()
     return -(norm_counts * np.log(norm_counts) / np.log(2)).sum()
@@ -122,7 +121,7 @@ def entropy(labels: np.ndarray) -> float:
 
 def experiment(**kw):
     id3 = ID3()
-    parameters = {'M': [2, 5, 10, 100, 200, 300]}
+    parameters = {'M': [2, 5, 10, 20, 50, 100, 150, 200, 300]}
     X_train, y_train = utils.load_train()
     utils.experiment(id3, X_train, y_train, parameters, **kw)
 

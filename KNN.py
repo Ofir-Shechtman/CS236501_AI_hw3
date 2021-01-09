@@ -73,7 +73,7 @@ def experiment(**kw):
     pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier())])
     parameters = {'knn__k': np.arange(1, 250)}
     X_train, y_train = utils.load_train()
-    return utils.experiment(pipe, X_train, y_train, parameters, **kw)
+    utils.experiment(pipe, X_train, y_train, parameters, **kw)
 
 
 def main2():

@@ -3,12 +3,13 @@ import KNN
 import CostSensitiveKNN
 import KNNForest
 import improvedKNNForest
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 if __name__ == '__main__':
-    print('__ID3__')
+    '''print('__ID3__')
     ID3.main()
-    #ID3.experiment()
+    ID3.experiment()
     print('__KNN__')
     KNN.main()
     #KNN.experiment()
@@ -17,6 +18,6 @@ if __name__ == '__main__':
     print('__KNNForest__')
     KNNForest.main2()
     KNNForest.main()
-    print('__improvedKNNForest__')
+    print('__improvedKNNForest__')'''
     improvedKNNForest.main2()
     improvedKNNForest.main()
