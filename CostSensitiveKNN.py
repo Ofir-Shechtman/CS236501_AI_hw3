@@ -4,11 +4,11 @@ from sklearn.preprocessing import MinMaxScaler
 import KNN
 import numpy as np
 import utils
-SICK, HEALTHY = 1, 0
+from utils import SICK, HEALTHY
+
 
 def sensitive_loss(y_true, y_predicted):
-    sick, healthy = 1, 0
-    conf_mat = confusion_matrix(y_true, y_predicted, normalize='true', labels=[healthy, sick])
+    conf_mat = confusion_matrix(y_true, y_predicted, normalize='true', labels=[HEALTHY, SICK])
     FN = conf_mat[1][0]
     FP = conf_mat[0][1]
     return 0.1 * FP + FN

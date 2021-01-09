@@ -7,6 +7,7 @@ MY_ID = 206180374
 TRAIN_FILE = "train.csv"
 TEST_FILE = "test.csv"
 TO_PREDICT = 'diagnosis'
+SICK, HEALTHY = 1, 0
 
 
 def random_state(seed=MY_ID):
@@ -15,7 +16,7 @@ def random_state(seed=MY_ID):
 def _load(input_file, target):
     df = pd.read_csv(input_file)
     X = df.drop(target, axis=1)
-    diagnosis_map = {'B': 0, 'M': 1}
+    diagnosis_map = {'B': HEALTHY, 'M': SICK}
     y = df[target].map(diagnosis_map)
     return X, y
 
