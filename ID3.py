@@ -26,7 +26,7 @@ class ID3(BaseEstimator, ClassifierMixin):
         for i in range(len(X)):
             answer = self._decision(self._tree, X[i])
             prediction.append(answer)
-        return prediction
+        return np.array(prediction)
 
     @staticmethod
     def _decision(root, row):
@@ -67,7 +67,7 @@ class ID3(BaseEstimator, ClassifierMixin):
         assert len(np.unique(y)) == 2
         assert X.ndim == 2
         assert y.ndim == 1
-        if len(X) <= self.M:  # min_samples_split, label is the most common
+        if len(X) < self.M:  # min_samples_split, label is the most common
             most_common = Counter(y).most_common(1)[0]
             return self.Leaf(label=most_common[0])
 
@@ -86,13 +86,15 @@ class ID3(BaseEstimator, ClassifierMixin):
 
         features = np.apply_along_axis(self._find_threshold, axis=0, arr=X, y=y)
         best_feature = np.argmax(features[0])
-        threshold = features[1, np.argmax(features[0])]
+        threshold = features[1, best_feature]
         return self.ContinuousNode(best_feature, threshold)
 
     def _find_threshold(self, x, y):
         assert len(x) == len(y)
         assert len(x) > 1
         assert len(np.unique(y)) == 2
+        if len(np.unique(x)) == 1:
+            return -1*float('inf'), 0
         assert len(np.unique(x)) > 1
         u = np.unique(x)
         u.sort()

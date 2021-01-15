@@ -16,17 +16,20 @@ class KNNForest(KNN.KNNClassifier):
         self.seed = seed
         self.p = p
 
+    @property
+    def weights(self):
+        if self.p:
+            return np.full(self.N, self.p)
+        else:
+            return np.linspace(0.3, 0.7, num=self.N)
 
     def fit(self, X, y):
         assert self.N > 0
-        assert 0 < self.k < self.N
+        assert 0 < self.k <= self.N
         #assert 0.3 <= self.weights.all() <= 0.7
         assert len(X) == len(y)
         X, y = check_X_y(X, y)
-        if self.p:
-            self.weights = np.full(self.N, self.p)
-        else:
-            self.weights = np.linspace(0.3, 0.7, num=self.N)
+        X = self.scaler.fit_transform(X)
         random_state = utils.random_state(self.seed)
         samples = [sample(X, y, p, random_state) for p in self.weights]
         self.x_train = np.stack([np.mean(X, axis=0) for X, y in samples])
@@ -45,6 +48,18 @@ class KNNForest(KNN.KNNClassifier):
                 trees_decision[sample, tree_idx] = self.trees[tree].predict(x)[0]
         return trees_decision
 
+    def majority(self, array, kneighbors):
+        classes, indices = np.unique(array, return_inverse=True)
+        N, K = array.shape
+        indices = indices.reshape(N, K)
+        weights = self.weights[kneighbors]
+        binned_indices = np.empty((N, 2))
+        for i, (idx, weight) in enumerate(zip(indices, weights)):
+            binned_indices[i] = np.bincount(idx, weight)
+
+        most_common = classes[np.argmax(binned_indices, axis=1)]
+        return most_common
+
 
 def sample(X, y, p, random_state):
     assert len(X) == len(y)
@@ -57,10 +72,10 @@ def experiment(**kw):
     X_train, y_train = utils.load_train()
     #parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
     #parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
-    param10 = {'M': [2, 20], 'N': [10], 'k': [7, 9], 'p': np.linspace(0.3, 0.7, num=5)}
-    param20 = {'M': [2, 20], 'N': [20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
+    param10 = {'M': [2, 5], 'N': [10], 'k': [7, 9], 'p': np.linspace(0.3, 0.7, num=5)}
+    param20 = {'M': [2, 5], 'N': [20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
     parameters = [param10, param20]
-    parameters = [{'knn_forest__' + k: v for k, v in parametersd.items()} for parametersd in parametersd]
+    parameters = [{'knn_forest__' + k: v for k, v in parametersd.items()} for parametersd in parameters]
     return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3, **kw)
 
 def main2():
@@ -71,7 +86,7 @@ def main2():
     print(pipe.score(X_test, y_test))
 
 def main():
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(N=10, k=7, p=0.7, M=2))])
+    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(N=10, k=9, p=0.7, M=2))])
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     pipe.fit(X_train, y_train)
