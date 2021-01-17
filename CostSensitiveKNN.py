@@ -14,6 +14,10 @@ class CostSensitiveKNN(KNN.KNNClassifier):
         self.w1 = w1
         self.w2 = w2
 
+    def fit(self, X, y):
+        assert self.k < self.w1
+        super().fit(X, y)
+
     @property
     def weights_majority(self):
         return {MALIGNANT: self.w1, BENIGN: 1}
@@ -66,11 +70,12 @@ def main2():
         print(pipe.score(X_test, y_test))
 
 def find_w():
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', CostSensitiveKNN(1, 1, 1))])
-    parameters = {'knn__k': np.arange(1, 30), 'knn__w1':np.arange(1, 15), 'knn__w2':np.arange(0, 1, 0.01)}
+    pipe = CostSensitiveKNN(1, 1, 1)
+    parameters = {'k': range(1,40,5), 'w1':range(1,40,5), 'w2':np.arange(1.0, 2.0, 0.01)}
+    #parameters = {'k': [9], 'w1':[9], 'w2':[1.09]}
     X_train, y_train = utils.load_train()
     sensitive_scorer = make_scorer(sensitive_loss, greater_is_better=False)
-    pipe, best_params, best_score = utils.experiment(pipe, X_train, y_train, parameters, scoring=sensitive_scorer, plot=False, n_splits=7)
+    pipe, best_params, best_score = utils.experiment(pipe, X_train, y_train, parameters, scoring=sensitive_scorer, plot=False, n_splits=9, verbose=1)
     X_test, y_test = utils.load_test()
     y_predicted = pipe.predict(X_test)
     print(f'k={best_params}')
@@ -84,7 +89,7 @@ def find_w2():
     for k in np.arange(1, 50):
         for w1 in np.arange(1, 50):
             for w2 in np.arange(1, 2, 0.01):
-                pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', CostSensitiveKNN(k=k,w1=w1, w2=w2))])
+                pipe = CostSensitiveKNN(k=k,w1=w1, w2=w2)
                 pipe.fit(X_train, y_train)
                 y_predicted = pipe.predict(X_test)
                 d.append((k,w1, w2,sensitive_loss(y_test, y_predicted)))
@@ -94,7 +99,7 @@ def find_w2():
 
 
 def main():
-    wknn = CostSensitiveKNN(k=14, w1=3, w2=0.9)
+    wknn = CostSensitiveKNN(k=9, w1=9, w2=1.09)
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     wknn.fit(X_train, y_train)

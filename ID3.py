@@ -67,7 +67,7 @@ class ID3(BaseEstimator, ClassifierMixin):
         assert len(np.unique(y)) == 2
         assert X.ndim == 2
         assert y.ndim == 1
-        if len(X) < self.M:  # min_samples_split, label is the most common
+        if len(X) < self.M or len(np.unique(X, axis=0))==1:  # min_samples_split, label is the most common
             most_common = Counter(y).most_common(1)[0]
             return self.Leaf(label=most_common[0])
 

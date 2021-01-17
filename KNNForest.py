@@ -1,3 +1,4 @@
+from sklearn.metrics import confusion_matrix
 from sklearn.tree import DecisionTreeClassifier
 import KNN
 import ID3
@@ -9,7 +10,7 @@ import utils
 
 
 class KNNForest(KNN.KNNClassifier):
-    def __init__(self, N, k, seed=utils.MY_ID, p=None, M=0):
+    def __init__(self, N, k, p, seed=0, M=0):
         super().__init__(k=k)
         self.N = N
         self.M = M
@@ -18,23 +19,19 @@ class KNNForest(KNN.KNNClassifier):
 
     @property
     def weights(self):
-        if self.p:
-            return np.full(self.N, self.p)
-        else:
-            return np.linspace(0.3, 0.7, num=self.N)
+        return np.full(self.N, self.p)
 
     def fit(self, X, y):
         assert self.N > 0
         assert 0 < self.k <= self.N
-        #assert 0.3 <= self.weights.all() <= 0.7
         assert len(X) == len(y)
         X, y = check_X_y(X, y)
         X = self.scaler.fit_transform(X)
         random_state = utils.random_state(self.seed)
-        samples = [sample(X, y, p, random_state) for p in self.weights]
+        samples = [self.sample(X, y, p, random_state) for p in self.weights]
         self.x_train = np.stack([np.mean(X, axis=0) for X, y in samples])
         self.trees = [ID3.ID3(self.M).fit(X, y) for X, y in samples]
-        #self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=random_state).fit(X, y) for X, y in samples]
+        # self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=random_state).fit(X, y) for X, y in samples]
         return self
 
     def _decision(self, indices_mat, x_test):
@@ -60,37 +57,39 @@ class KNNForest(KNN.KNNClassifier):
         most_common = classes[np.argmax(binned_indices, axis=1)]
         return most_common
 
-
-def sample(X, y, p, random_state):
-    assert len(X) == len(y)
-    mask = random_state.choice([True, False], len(X), p=[p, 1 - p])
-    return X[mask], y[mask]
+    @staticmethod
+    def sample(X, y, p, random_state):
+        assert len(X) == len(y)
+        mask = random_state.choice([True, False], len(X), p=[p, 1 - p])
+        return X[mask], y[mask]
 
 
 def experiment(**kw):
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(10, 7, p=None))])
+    knn_forest = KNNForest(10, 7, p=0)
     X_train, y_train = utils.load_train()
-    #parameters = {'M': [2, 20], 'N': [10, 20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
-    #parameters = {'knn_forest__' + k: v for k, v in parameters.items()}
-    param10 = {'M': [2, 5], 'N': [10], 'k': [7, 9], 'p': np.linspace(0.3, 0.7, num=5)}
-    param20 = {'M': [2, 5], 'N': [20], 'k': [7, 9, 17], 'p': np.linspace(0.3, 0.7, num=5)}
-    parameters = [param10, param20]
-    parameters = [{'knn_forest__' + k: v for k, v in parametersd.items()} for parametersd in parameters]
-    return utils.experiment(pipe, X_train, y_train, parameters, plot=False, n_splits=3, **kw)
+    #parameters = {'N': range(10, 100, 10), 'k': range(7, 100, 5), 'p': np.linspace(0.3, 0.7, num=5)}
+    parameters = {'M': [2], 'N': [20, 30, 40, 50, 60], 'p':np.arange(0.5,0.8,0.05), 'k':[15, 20, 25, 30], 'seed':[0]}
+    return utils.experiment(knn_forest, X_train, y_train, parameters, plot=False, n_splits=4, **kw)
 
 def main2():
-    pipe, best_params, best_score = experiment(verbose=0)
+    pipe, best_params, best_score = experiment(verbose=1)
     print(best_params)
     print(best_score)
     X_test, y_test = utils.load_test()
     print(pipe.score(X_test, y_test))
 
+
+
 def main():
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn_forest', KNNForest(N=10, k=9, p=0.7, M=2))])
+    knn_forest = KNNForest(N=70, k=20, p=0.5, M=2)
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
-    pipe.fit(X_train, y_train)
-    print(pipe.score(X_test, y_test))
+    knn_forest.fit(X_train, y_train)
+    # from utils import MALIGNANT, BENIGN
+    # from sklearn.metrics import confusion_matrix
+    # conf_mat = confusion_matrix(y_test, knn_forest.predict(X_test), labels=[BENIGN, MALIGNANT])
+    # print(conf_mat)
+    print(knn_forest.score(X_test, y_test))
 
 if __name__ == '__main__':
     main()
