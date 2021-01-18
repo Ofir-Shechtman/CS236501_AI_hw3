@@ -1,6 +1,4 @@
-import itertools
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 import numpy as np
@@ -65,16 +63,13 @@ class KNNClassifier(BaseEstimator, ClassifierMixin):
 
 
 def experiment(**kw):
-    pipe = Pipeline([('scaler', MinMaxScaler()), ('knn', KNNClassifier())])
-    parameters = {'knn__k': np.arange(1, 250)}
+    # run without extra parameters for default behavior
+    knn = KNNClassifier()
+    parameters = {'k': np.arange(1, 250)}
     X_train, y_train = utils.load_train()
-    utils.experiment(pipe, X_train, y_train, parameters, **kw)
+    utils.experiment(knn, X_train, y_train, parameters, **kw)
 
 
-def main2():
-    pipe, best_params, best_score = experiment(plot=False)
-    X_test, y_test = utils.load_test()
-    print(pipe.score(X_test, y_test))
 
 
 def main():

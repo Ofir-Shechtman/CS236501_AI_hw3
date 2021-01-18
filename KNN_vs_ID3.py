@@ -78,7 +78,3 @@ class KNN_vs_ID3:
         plt.tight_layout(pad=3 if len(models) <= 5 else 1)
         plt.gcf().set_size_inches(min(len(models), 5) * 2.5, (len(models) // 5) * 2.5 + 3)
         plt.show()
-
-
-if __name__ == '__main__':
-    KNN_vs_ID3.plot_example3()

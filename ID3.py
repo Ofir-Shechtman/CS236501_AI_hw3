@@ -122,6 +122,7 @@ def entropy(labels):
 
 
 def experiment(**kw):
+    # run without extra parameters for default behavior
     id3 = ID3()
     parameters = {'M': [2, 5, 10, 20, 50, 100, 150, 200, 300]}
     X_train, y_train = utils.load_train()

@@ -31,7 +31,6 @@ class KNNForest(KNN.KNNClassifier):
         samples = [self.sample(X, y, p, random_state) for p in self.weights]
         self.x_train = np.stack([np.mean(X, axis=0) for X, y in samples])
         self.trees = [ID3.ID3(self.M).fit(X, y) for X, y in samples]
-        # self.trees = [DecisionTreeClassifier(criterion='entropy', random_state=random_state).fit(X, y) for X, y in samples]
         return self
 
     def _decision(self, indices_mat, x_test):
@@ -65,30 +64,18 @@ class KNNForest(KNN.KNNClassifier):
 
 
 def experiment(**kw):
-    knn_forest = KNNForest(10, 7, p=0)
+    # run without extra parameters for default behavior
+    knn_forest = KNNForest(10, 7, p=0.3)
     X_train, y_train = utils.load_train()
-    #parameters = {'N': range(10, 100, 10), 'k': range(7, 100, 5), 'p': np.linspace(0.3, 0.7, num=5)}
-    parameters = {'M': [2], 'N': [20, 30, 40, 50, 60], 'p':np.arange(0.5,0.8,0.05), 'k':[15, 20, 25, 30], 'seed':[0]}
-    return utils.experiment(knn_forest, X_train, y_train, parameters, plot=False, n_splits=4, **kw)
-
-def main2():
-    pipe, best_params, best_score = experiment(verbose=1)
-    print(best_params)
-    print(best_score)
-    X_test, y_test = utils.load_test()
-    print(pipe.score(X_test, y_test))
-
+    parameters = {'M': [2, 10, 30], 'N': range(20, 150, 10), 'p':np.arange(0.3,0.75,0.05).round(2), 'k':range(20, 150, 10)}
+    return utils.experiment(knn_forest, X_train, y_train, parameters, plot=False, n_splits=5, **kw)
 
 
 def main():
-    knn_forest = KNNForest(N=70, k=20, p=0.5, M=2)
+    knn_forest = KNNForest(N=50, k=20, p=0.35, M=2)
     X_train, y_train = utils.load_train()
     X_test, y_test = utils.load_test()
     knn_forest.fit(X_train, y_train)
-    # from utils import MALIGNANT, BENIGN
-    # from sklearn.metrics import confusion_matrix
-    # conf_mat = confusion_matrix(y_test, knn_forest.predict(X_test), labels=[BENIGN, MALIGNANT])
-    # print(conf_mat)
     print(knn_forest.score(X_test, y_test))
 
 if __name__ == '__main__':
